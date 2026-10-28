@@ -70,11 +70,7 @@ let bank=[
 {category:'環境倫理',question:'環境倫理要求決策者如何面對取捨？',options:['保持透明、承認取捨並持續修正','假裝沒有代價','只公布好消息','拒絕聽取不同群體'],answer:0,explanation:'透明、承認取捨與持續修正，是負責任的公共決策態度。'},
 {category:'環境倫理',question:'環境保護最後回到哪種關係？',options:['人與土地、人與人、現在與未來','只有人與商品','只有個人與金錢','只有城市與科技'],answer:0,explanation:'環境保護關乎共同生活的條件與多重關係。'}
 ];
-const REMOTE_CSV_URLS=[
-  'https://docs.google.com/spreadsheets/d/e/2PACX-1vSHU6I3awRiqtk-_oeHsNK0xqVh31-SdtFQpl9g4qNVzDhPpHGKpA3Rp_gbzeACBw/pub?gid=1922463696&single=true&output=csv',
-  'https://docs.google.com/spreadsheets/d/e/2PACX-1vR-C6c5ze5yoj8L2Ic0Wu8PCys9ZQgcySn_8NhlwtIzSM-u5QBfmZdrqP43595frw/pub?gid=1333583530&single=true&output=csv',
-  'https://docs.google.com/spreadsheets/d/e/2PACX-1vQL3Ropx1AWcoX_R4KpYXDKJ01Egrq39uhjcDb1IC6sIaGykceDs0rto--3EppR5IRquPqInbcY8iDk/pub?gid=0&single=true&output=csv'
-];
+const LOCAL_CSV_URL='question-bank.csv';
 let bankSource='內建題庫';
 let activeQuestions=[],submitted=false;
 const $=s=>document.querySelector(s); const todayKey=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Taipei'});
@@ -90,7 +86,7 @@ function normalize(q){const pick=(...keys)=>{for(const key of keys){if(q[key]!==
 function parseCsv(text){const rows=[];let row=[],cell='',quoted=false;for(let i=0;i<text.length;i++){const ch=text[i],next=text[i+1];if(ch==='"'&&quoted&&next==='"'){cell+='"';i++;continue}if(ch==='"'){quoted=!quoted;continue}if(ch===','&&!quoted){row.push(cell.trim());cell='';continue}if((ch==='\n'||ch==='\r')&&!quoted){if(ch==='\r'&&next==='\n')i++;row.push(cell.trim());if(row.some(v=>v!==''))rows.push(row);row=[];cell='';continue}cell+=ch}if(cell||row.length){row.push(cell.trim());rows.push(row)}const head=rows.shift().map(v=>v.toLowerCase().replace(/^\ufeff/,''));return rows.map(r=>Object.fromEntries(head.map((h,i)=>[h,r[i]||'']))).map(q=>({...q,options:q.options||[q.optiona,q.optionb,q.optionc,q.optiond]}))}
 async function init(){
   $('#statusText').textContent='正在讀取 Google 雲端題庫…';
-  try{const results=await Promise.allSettled(REMOTE_CSV_URLS.map(url=>fetch(url,{cache:'no-store'}).then(response=>{if(!response.ok)throw new Error('fetch failed');return response.text()})));const rows=results.filter(result=>result.status==='fulfilled').flatMap(result=>parseCsv(result.value).map(normalize)).filter(q=>q.question&&q.options.filter(Boolean).length>=2&&Number.isInteger(q.answer)&&q.answer>=0&&q.answer<q.options.length);if(rows.length<40)throw new Error('題目不足 40 題');bank.splice(0,bank.length,...rows);bankSource=`Google 雲端題庫（${results.filter(result=>result.status==='fulfilled').length} 份）`}catch(error){bankSource='內建題庫（雲端讀取失敗）'}
+  try{const response=await fetch(LOCAL_CSV_URL,{cache:'no-store'});if(!response.ok)throw new Error('CSV not found');const rows=parseCsv(await response.text()).map(normalize).filter(q=>q.question&&q.options.filter(Boolean).length>=2&&Number.isInteger(q.answer)&&q.answer>=0&&q.answer<q.options.length);if(rows.length<40)throw new Error('題目不足 40 題');bank.splice(0,bank.length,...rows);bankSource=`CSV 題庫・共 ${rows.length} 題`}catch(error){bankSource='內建題庫（CSV 讀取失敗）'}
   makeSet();
 }
 init();
